@@ -7,18 +7,100 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 import requests
 from django.conf import settings
 import json
 import base64
 from django.db import models
 import re
+import time
+
+
+def generate_product_image(product_name, description, api_key, url, headers):
+    """Generate an image for a product using Gemini API."""
+    prompt = f"Generate a realistic, high-quality product photo of {product_name}. {description}. Make it look like a professional e-commerce product image with good lighting and clean background."
+
+    data = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "responseModalities": ["Image"],
+            "temperature": 0.8,
+            "topK": 40,
+            "topP": 0.95,
+            "maxOutputTokens": 4096,
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=60)
+        response.raise_for_status()
+        gemini_response = response.json()
+
+        # Extract image data
+        image_part = gemini_response['candidates'][0]['content']['parts'][0]
+        if 'inline_data' in image_part:
+            image_data = image_part['inline_data']['data']
+            mime_type = image_part['inline_data']['mime_type']
+            return f"data:{mime_type};base64,{image_data}"
+        else:
+            print(f"No image data in response for {product_name}")
+            return f"https://via.placeholder.com/200x200?text={product_name.replace(' ', '+').replace('&', 'and')}"
+
+    except Exception as e:
+        print(f"Error generating image for {product_name}: {e}")
+        return f"https://via.placeholder.com/200x200?text={product_name.replace(' ', '+').replace('&', 'and')}"
 
 
 # Create your views here.
 
+@extend_schema(
+    request={
+        'multipart/form-data': {
+            'type': 'object',
+            'properties': {
+                'image': {
+                    'type': 'string',
+                    'format': 'binary',
+                    'description': 'Fashion item image to analyze for recommendations'
+                }
+            },
+            'required': ['image']
+        }
+    },
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        500: OpenApiTypes.OBJECT
+    },
+    summary="Get fashion product recommendations",
+    description="Upload a fashion item image to receive AI-powered recommendations for similar products",
+    examples=[
+        OpenApiExample(
+            'Success Response',
+            value=[
+                {
+                    "id": 1,
+                    "name": "Classic White Button-Down Shirt",
+                    "description": "A timeless white button-down shirt made from premium cotton...",
+                    "category": "shirt",
+                    "price": "$45.00 - $65.00",
+                    "style_tags": ["casual", "classic", "professional"],
+                    "image": "https://via.placeholder.com/200x200?text=Classic+White+Button-Down+Shirt",
+                    "created_at": None
+                }
+            ]
+        )
+    ]
+)
 @api_view(['POST'])
-
 def recommend_product(request):
     image = request.FILES.get('image')
     if not image:
@@ -154,7 +236,8 @@ CRITICAL: Return ONLY the JSON array. No markdown, no code blocks, no explanator
                 
                 # Add additional fields for frontend compatibility
                 rec['id'] = idx + 1
-                rec['image'] = None
+                # Use placeholder image instead of generating with Gemini to avoid rate limits
+                rec['image'] = f"https://via.placeholder.com/200x200?text={rec['name'].replace(' ', '+').replace('&', 'and')}"
                 rec['created_at'] = None
                 
                 valid_recommendations.append(rec)
@@ -263,6 +346,15 @@ class UserDetailView(APIView):
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
+@extend_schema(
+    request=UserRegistrationSerializer,
+    responses={
+        201: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT
+    },
+    summary="User registration",
+    description="Register a new user account with email, username, and password"
+)
 @api_view(['POST'])
 def signup(request):
     serializer = UserRegistrationSerializer(data=request.data)
@@ -279,6 +371,15 @@ def signup(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema(
+    request=UserLoginSerializer,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT
+    },
+    summary="User login",
+    description="Authenticate user with email and password to receive JWT tokens"
+)
 @api_view(['POST'])
 def login(request):
     serializer = UserLoginSerializer(data=request.data)

@@ -7,6 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import LoginScreen from "../screens/LoginScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import RecommendedProductsScreen from "../screens/RecommendedProductsScreen";
+import SettingsScreen from "../screens/SettingsScreen";
 import BottomNavigation from "./BottomNavigation";
 
 const Stack = createStackNavigator();
@@ -54,6 +55,17 @@ const StackNavigation = () => {
         options={{
           headerShown: true,
           title: "Recommended Products",
+          headerBackTitle: "Back",
+        }}
+      />
+
+      {/* Add SettingsScreen as a stack screen */}
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          headerShown: true,
+          title: "Settings",
           headerBackTitle: "Back",
         }}
       />

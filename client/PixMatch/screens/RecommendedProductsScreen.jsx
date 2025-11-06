@@ -5,6 +5,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  SafeAreaView,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { useTheme } from "../context/ThemeContext";
@@ -36,7 +37,7 @@ const RecommendedProductsScreen = () => {
   );
 
   return (
-    <View style={[globalStyles.container]}>
+    <SafeAreaView style={[globalStyles.container]}>
       <View style={styles.header}>
         <Text style={[globalStyles.title, { color: colors.primary }]}>
           Recommended Products
@@ -55,7 +56,7 @@ const RecommendedProductsScreen = () => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmpty}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

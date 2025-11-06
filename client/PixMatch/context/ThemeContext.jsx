@@ -81,7 +81,13 @@ export const ThemeProvider = ({ children }) => {
     typography,
     isDarkMode,
     toggleTheme,
-    globalStyles,
+    globalStyles: {
+      ...globalStyles,
+      container: {
+        ...globalStyles.container,
+        backgroundColor: colors.background,
+      },
+    },
   };
 
   return (
